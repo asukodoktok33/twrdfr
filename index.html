@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shortlink Generator</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; background-color: #ffe4e1; color: #333; }
+    .app-section { background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); text-align: center; max-width: 500px; width: 90%; }
+    h1 { color: #ff69b4; margin-bottom: 20px; }
+    .input-group { margin-bottom: 15px; text-align: left; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; color: #d87093;}
+    input[type="text"], input[type="url"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
+    button { background-color: #ff69b4; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s ease; width: 100%; }
+    button:hover { background-color: #ff1493; }
+    .result-display { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; text-align: left; }
+    .result-link-input { width: calc(100% - 22px); padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f8f8f8; cursor: text; font-size: 14px; color: #555; margin-bottom: 10px; }
+    .error-message { color: red; font-weight: bold; margin-top: 10px; display: none; }
+    .link-options { display: flex; justify-content: space-around; margin: 20px 0; color: #d87093; }
+  </style>
+</head>
+<body>
+  <div class="app-section">
+    <h1>Shortlink OG Generator</h1>
+    <form id="ogForm">
+      <div class="input-group">
+        <label for="title">Judul OG:</label>
+        <input type="text" id="title" name="title" value="Free To Watch" required />
+      </div>
+      <div class="input-group">
+        <label for="desc">Deskripsi OG:</label>
+        <input type="text" id="desc" name="desc" value="1.472.312 Views" required />
+      </div>
+      <div class="input-group">
+        <label for="imageUrl">URL Gambar (ImageKit/Lainnya):</label>
+        <input type="url" id="imageUrl" name="imageUrl" placeholder="https://ik.imagekit.io/..." required />
+      </div>
+      <div class="input-group">
+        <label for="redirectUrl">URL Redirect Tujuan:</label>
+        <input type="url" id="redirectUrl" name="redirectUrl" value="https://go-v2.twrdfr.xyz/" required />
+      </div>
+      
+      <div class="input-group">
+        <label>Pilih Format Link Hasil:</label>
+        <div class="link-options">
+          <label><input type="radio" name="linkType" value="asli" checked> Asli</label>
+          <label><input type="radio" name="linkType" value="p_fb"> p.facebook</label>
+          <label><input type="radio" name="linkType" value="l_fb"> l.facebook</label>
+        </div>
+      </div>
+
+      <button type="submit">Buat Link</button>
+    </form>
+    <div id="resultContainer" class="result-display" style="display:none">
+      <label for="resultLink">Link Hasil:</label>
+      <input type="text" id="resultLink" class="result-link-input" readonly>
+      <button class="copy-button" onclick="copyResult()">Salin</button>
+    </div>
+    <div id="errorMessage" class="error-message"></div>
+  </div>
+
+  <script>
+    const ogForm = document.getElementById('ogForm');
+    const resultContainer = document.getElementById('resultContainer');
+    const resultLinkInput = document.getElementById('resultLink');
+    const errorMessage = document.getElementById('errorMessage');
+
+    ogForm.onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(ogForm);
+      const payload = {
+        title: formData.get('title'),
+        desc: formData.get('desc'),
+        imageUrl: formData.get('imageUrl'),
+        redirect: formData.get('redirectUrl')
+        // slug1 dan slug2 akan digenerate oleh worker
+      };
+
+      errorMessage.style.display = 'none';
+      resultContainer.style.display = 'none';
+
+      try {
+        const res = await fetch('https://api.twrdfr.xyz/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          const baseLink = `https://${data.slug1}.twrdfr.xyz/${data.slug2}`;
+          const selectedType = document.querySelector('input[name="linkType"]:checked').value;
+          let finalLink = '';
+
+          if (selectedType === 'asli') {
+            finalLink = baseLink;
+          } else if (selectedType === 'p_fb') {
+            finalLink = `https://p.facebook.com/l.php?u=${encodeURIComponent(baseLink)}&s=1`;
+          } else if (selectedType === 'l_fb') {
+            // Catatan: Parameter 'h' biasanya unik & digenerate oleh Facebook.
+            // Kita gunakan placeholder atau nilai statis seperti contoh Anda.
+            finalLink = `https://l.facebook.com/l.php?u=${encodeURIComponent(baseLink)}&h=vzXt8l0&s=1`;
+          }
+
+          resultLinkInput.value = finalLink;
+          resultContainer.style.display = 'block';
+        } else {
+          errorMessage.textContent = 'Gagal membuat shortlink: ' + (data.error || res.statusText);
+          errorMessage.style.display = 'block';
+        }
+      } catch (err) {
+        errorMessage.textContent = 'Terjadi kesalahan jaringan: ' + err.message;
+        errorMessage.style.display = 'block';
+      }
+    };
+
+    function copyResult() {
+      resultLinkInput.select();
+      document.execCommand('copy');
+      // Anda bisa menambahkan notifikasi "Tersalin!" di sini
+    }
+  </script>
+</body>
+</html>
